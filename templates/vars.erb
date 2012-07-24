@@ -50,24 +50,24 @@ export PKCS11_PIN="dummy"
 # down TLS negotiation performance
 # as well as the one-time DH parms
 # generation process.
-#export KEY_SIZE=<%= key_size %>
+export KEY_SIZE=<%= key_size %>
 
 # In how many days should the root CA key expire?
-#export CA_EXPIRE=<%= ca_expire %>
+export CA_EXPIRE=<%= ca_expire %>
 
 # In how many days should certificates expire?
-#export KEY_EXPIRE=<%= key_expire %>
+export KEY_EXPIRE=<%= key_expire %>
 
 # These are the default values for fields
 # which will be placed in the certificate.
 # Don't leave any of these fields blank.
-#export KEY_COUNTRY="<%= key_country %>"
-#export KEY_PROVINCE="<%= key_province %>"
-#export KEY_CITY="<%= key_city %>"
-#export KEY_ORG="<%= key_org %>"
-#export KEY_EMAIL="<%= key_email %>"
-##export KEY_CN="<%= key_cn %>"
-#export KEY_NAME="<%= key_name %>"
+export KEY_COUNTRY="<%= key_country %>"
+export KEY_PROVINCE="<%= key_province %>"
+export KEY_CITY="<%= key_city %>"
+export KEY_ORG="<%= key_org %>"
+export KEY_EMAIL="<%= key_email %>"
+export KEY_CN="<%= key_cn %>"
+export KEY_NAME="<%= key_name %>"
 export KEY_OU="<%= key_ou %>"
 export PKCS11_MODULE_PATH=changeme
 export PKCS11_PIN=1234
