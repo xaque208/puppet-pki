@@ -10,7 +10,7 @@ things like VPNs, MCollective, and Nginx vHosts using intermediate CAs.  Some
 of the CAs, like the example for Puppet below will not manage keys directly,
 but simply prepare the environment so that you do have a true chain of trust.
 Obviously this is of little use to you unless you install the RootCA
-certificate yourself.  Luckily, we have puppet.
+certificate yourself.  Luckily, Puppet is very good at this.
 
 ## Usage
 
@@ -35,7 +35,7 @@ So far, this builds a certificate/key pair for each `pki::interca` specified and
 
 Set resource defaults for a simpler manifest:
 
-    Pki::Interca { 
+    Pki::Interca {
       pki_dir      => $pki_dir,
       rootca       => "Root",
       key_email    => "ssl@example.com",
@@ -51,13 +51,28 @@ Provide the resources to generate the intermediate CAs:
     pki::interca { "VPN":
       dh => true,
     }
-    pki::interca { "MCollective": 
+    pki::interca { "MCollective":
     }
-    pki::interca { "Puppet": 
+    pki::interca { "Puppet":
     }
-    pki::interca { "TechOps": 
+    pki::interca { "TechOps":
       key_email    => "techops@example.com",
       key_name     => "TechOps",
     }
+
+### Create a Server Keypair
+
+We are not able to start generating server certificates.
+
+    Pki::Serverkey {
+      pki_dir => $pki_dir,
+    }
+
+    pki::serverkey { "tickets.example.com":
+      rootca   => 'TechOps',
+      key_name => 'Example.com Ticket Tracker',
+    }
+
+
 
 
