@@ -6,10 +6,10 @@ define pki::serverkey (
     $key_city     = "Portland",
     $key_email    = "admin@example.com",
     $key_org      = "Example",
-    $key_name     = "Web Server",
     $key_ou       = "Operations",
-    $pki_dir,
-    $rootca       = 'Ops'
+    $key_name,    # ie: Web Server
+    $pki_dir,     # ie: /opt/pki
+    $rootca       # ie: 'Ops'
 ) {
 
   $key_cn = $name
@@ -18,13 +18,13 @@ define pki::serverkey (
   $environment = [
     "KEY_EXPIRE=${key_expire}",
     "KEY_SIZE=${key_size}",
-    "KEY_COUNTRY=${key_country}",
-    "KEY_PROVINCE=${key_province}",
-    "KEY_CITY=${key_city}",
-    "KEY_EMAIL=${key_email}",
-    "KEY_ORG=${key_org}",
+    #"KEY_COUNTRY=${key_country}",
+    #"KEY_PROVINCE=${key_province}",
+    #"KEY_CITY=${key_city}",
+    #"KEY_EMAIL=${key_email}",
+    #"KEY_ORG=${key_org}",
     "KEY_CN=${key_cn}",
-    "KEY_OU=${key_ou}",
+    #"KEY_OU=${key_ou}",
     "KEY_NAME=${key_name}",
   ]
 

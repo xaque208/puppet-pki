@@ -50,7 +50,7 @@ export PKCS11_PIN="dummy"
 # down TLS negotiation performance
 # as well as the one-time DH parms
 # generation process.
-export KEY_SIZE=<%= key_size %>
+#export KEY_SIZE=<%= key_size %>
 
 # In how many days should the root CA key expire?
 export CA_EXPIRE=<%= ca_expire %>
@@ -69,5 +69,5 @@ export KEY_EMAIL="<%= key_email %>"
 #export KEY_CN="<%= key_cn %>"
 #export KEY_NAME="<%= key_name %>"
 export KEY_OU="<%= key_ou %>"
-export PKCS11_MODULE_PATH=changeme
-export PKCS11_PIN=1234
+export PKCS11_MODULE_PATH=foo
+export PKCS11_PIN=123456789

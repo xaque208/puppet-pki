@@ -1,15 +1,15 @@
 # Leverages EasyRSA to build out a new CA or Intermediate CA.
 define pki::ca (
     $ca_expire    = '3650',
-    $key_expire   = '3650',
+    $key_expire   = '365',
     $key_size     = '1024',
     $key_country  = 'US',
     $key_province = 'OR',
     $key_city     = "Portland",
-    $key_email    = "admin@foo.bar",
+    $key_email    = "admin@example.con",
     $key_org      = "Acme",
     $key_name     = "Root",
-    $key_ou       = "TechOps",
+    $key_ou       = "Pki",
     $pki_dir,
     $source_key   = '',
     $source_cert  = '',
