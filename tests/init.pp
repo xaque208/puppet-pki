@@ -13,7 +13,7 @@ pki::ca { "Root":
 
 Pki::Interca { 
   pki_dir      => $pki_dir,
-  rootca       => "${pki_dir}/Root",
+  rootca       => "Root",
   key_email    => "ssl@example.com",
   key_size     => 2048,
   key_country  => "US",

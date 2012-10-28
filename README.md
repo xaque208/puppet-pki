@@ -25,11 +25,11 @@ certificate yourself.  Luckily, we have puppet.
       key_country  => "US",
       key_province => "OR",
       key_city     => "Portland",
-      key_org      => "ZTel",
+      key_org      => "Acme",
       dh           => false,
     }
 
-### Generate the Intermediate CAs
+### Generate an Intermediate CAs
 
 So far, this builds a certificate/key pair for each `pki::interca` specified and signs them with the RootCA, specified at the location `rootca`.
 
@@ -37,14 +37,13 @@ Set resource defaults for a simpler manifest:
 
     Pki::Interca { 
       pki_dir      => $pki_dir,
-      rootca       => "${pki_dir}/Root",
+      rootca       => "Root",
       key_email    => "ssl@example.com",
       key_size     => 2048,
       key_country  => "US",
       key_province => "OR",
       key_city     => "Portland",
       key_org      => "TestCo",
-      require      => Pki::Ca["Root"],
     }
 
 Provide the resources to generate the intermediate CAs:
