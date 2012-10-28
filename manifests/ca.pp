@@ -91,7 +91,6 @@ define pki::ca (
       cwd     => $dest,
       command => "/bin/bash -c \"(source $dest/vars > /dev/null; ${dest}/build-dh ${key_size})\"",
       creates => "${dest}/keys/dh${key_size}.pem",
-      require => Pki::Pkitool["CA at ${dest}"],
     }
   }
 
