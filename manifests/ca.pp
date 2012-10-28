@@ -1,4 +1,4 @@
-#
+# Leverages EasyRSA to build out a new CA or Intermediate CA.
 define pki::ca (
     $ca_expire    = '3650',
     $key_expire   = '3650',
@@ -17,13 +17,8 @@ define pki::ca (
     $rootca_path  = ''
 ) {
 
-
   $key_cn = $name
   $dest   = "${pki_dir}/${key_cn}"
-
-  anchor { "ca::${key_cn}::start": }
-  -> anchor { "ca::${key_cn}::ready": }
-  -> anchor { "ca::${key_cn}::end": }
 
   $environment = [
     "CA_EXPIRE=${ca_expire}",
@@ -44,59 +39,59 @@ define pki::ca (
   }
 
   pki { $title:
-    dest   => $dest,
-    before => Anchor["ca::${key_cn}::start"],
+    dest => $dest,
   }
 
+  # Write the paramaters to the 'vars' script.
   file { "${dest}/vars":
     mode    => 700,
     content => template("pki/vars.erb"),
-    require => Anchor["ca::${key_cn}::start"],
-    before  => Anchor["ca::${key_cn}::ready"],
+    require => Pki[$title],
   }
 
+  # Clean everything and start over, unless the serial file is in place.
   exec { "Clean All at ${dest}":
     cwd     => $dest,
     command => "/bin/bash -c \"(source $dest/vars > /dev/null; ${dest}/clean-all)\"",
     creates => "${dest}/keys/serial",
-    require => Anchor["ca::${key_cn}::ready"],
-    before  => Anchor["ca::${key_cn}::end"],
+    require => File["${dest}/vars"],
   }
 
-  Pki::Pkitool {
-    base_dir    => $dest,
-    environment => $environment,
-    require     => Anchor["ca::${key_cn}::end"],
-  }
-
+  # Determine if we should build a new CA or copy in an existing.
   if ( $source_key != '' and $source_cert != '' ) {
 
+    # Copy in an existing CA.
     file { "${dest}/keys/ca.crt":
       source  => $source_cert,
       mode    => 0644,
-      require => Anchor["ca::${key_cn}::end"],
+      require => Exec["Clean All at ${dest}"],
     }
     file { "${dest}/keys/ca.key":
-      source => $source_key,
-      mode   => 0644,
-      require => Anchor["ca::${key_cn}::end"],
+      source  => $source_key,
+      mode    => 0644,
+      require => Exec["Clean All at ${dest}"],
     }
 
   } else {
 
-    pki::pkitool { "Generate CA at ${dest}":
-      command => "--initca",
-      creates => "${dest}/keys/ca.crt",
+    # Generate a new CA.
+    pki::pkitool { "CA at ${dest}":
+      command     => "--initca",
+      creates     => "${dest}/keys/ca.crt",
+      base_dir    => $dest,
+      environment => $environment,
+      require     => Exec["Clean All at ${dest}"],
     }
 
   }
 
   if $dh == true {
+    # Build the Diffie Hellman key.
     exec { "Build DH at ${dest}":
       cwd     => $dest,
       command => "/bin/bash -c \"(source $dest/vars > /dev/null; ${dest}/build-dh ${key_size})\"",
       creates => "${dest}/keys/dh${key_size}.pem",
-      require => Anchor["ca::${key_cn}::end"],
+      require => Pki::Pkitool["CA at ${dest}"],
     }
   }
 
