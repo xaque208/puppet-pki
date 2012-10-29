@@ -6,10 +6,10 @@ calling the OpenSSL commands directly.
 
 This is still very much an experiment, but I would like to be able to manage
 keys associated with each of these CAs and start deploying certificates for
-things like VPNs, MCollective, and Nginx vHosts using intermediate CAs.  Some
-of the CAs, like the example for Puppet below will not manage keys directly,
-but simply prepare the environment so that you do have a true chain of trust.
-Obviously this is of little use to you unless you install the RootCA
+things like VPNs, MCollective, and Nginx virtual hosts using intermediate CAs.
+Some of the CAs, like the example for Puppet below will not manage keys
+directly, but simply prepare the environment so that you do have a true chain
+of trust.  Obviously this is of little use to you unless you install the RootCA
 certificate yourself.  Luckily, Puppet is very good at this.
 
 ## Usage
@@ -28,6 +28,13 @@ certificate yourself.  Luckily, Puppet is very good at this.
       key_org      => "Acme",
       dh           => false,
     }
+
+#### What this does
+
+This installs EasyRSA to the directory specified as `$pki_dir/$name`.  In this
+case `/Users/zach/devel/pki/Root`.  Once complete, `pkitool` is called to
+generate a new CA, building the environment out of the specified parameters.
+
 
 ### Generate an Intermediate CAs
 
@@ -60,9 +67,15 @@ Provide the resources to generate the intermediate CAs:
       key_name     => "TechOps",
     }
 
+#### What this does
+
+This creates several intermediate CAs in the root CA located at `$pki_dir/Root`
+and then proceeds to create new EasyRSA installations using the generated in
+the root, as the CA keypair as the newly generated intermediate CA keypair.
+
 ### Create a Server Keypair
 
-We are not able to start generating server certificates.
+We are not able to start generating server certificates for a given intermediate CA.
 
     Pki::Serverkey {
       pki_dir => $pki_dir,
@@ -73,6 +86,11 @@ We are not able to start generating server certificates.
       key_name => 'Example.com Ticket Tracker',
     }
 
+#### What this does
 
+This creates a server keypair for the CA specified, following the same manner above.
 
+## Contributers
+
+* Zach Leslie <zach@puppetlabs.com>
 
