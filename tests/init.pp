@@ -35,6 +35,13 @@ pki::interca { "TechOps":
   key_name     => "TechOps",
 }
 
+Pki::Serverkey {
+  pki_dir => $pki_dir,
+}
 
-#pki::key { "reuk.n3kl.cx": ca => "VPN" }
+pki::serverkey { "tickets.example.com":
+  rootca   => 'TechOps',
+  key_name => 'Example.com Ticket Tracker',
+}
+
 
