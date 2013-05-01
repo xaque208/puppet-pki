@@ -1,4 +1,4 @@
-define pki::serverkey (
+define pki::key (
     $key_expire   = '365',
     $key_size     = '2048',
     $key_country  = 'US',
@@ -28,8 +28,8 @@ define pki::serverkey (
     "KEY_NAME=${key_name}",
   ]
 
-  pki::pkitool { "Generate server keypair for ${key_cn} at ${rootca}":
-    command     => "--server ${key_cn}",
+  pki::pkitool { "Generate client keypair for ${key_cn} at ${rootca}":
+    command     => "${key_cn}",
     creates     => "${pki_dir}/${rootca}/keys/${key_cn}.key",
     base_dir    => "${pki_dir}/${rootca}",
     environment => $environment,
