@@ -1,4 +1,5 @@
 define pki::serverkey (
+    $ensure       = present,
     $key_expire   = '365',
     $key_size     = '2048',
     $key_country  = 'US',
@@ -9,7 +10,7 @@ define pki::serverkey (
     $key_ou       = "Operations",
     $key_name,    # ie: Web Server
     $pki_dir,     # ie: /opt/pki
-    $rootca       # ie: 'Ops'
+    $rootca,      # ie: 'Ops'
 ) {
 
   $key_cn = $name
@@ -28,12 +29,18 @@ define pki::serverkey (
     "KEY_NAME=${key_name}",
   ]
 
-  pki::pkitool { "Generate server keypair for ${key_cn} at ${rootca}":
-    command     => "--server ${key_cn}",
-    creates     => "${pki_dir}/${rootca}/keys/${key_cn}.key",
-    base_dir    => "${pki_dir}/${rootca}",
-    environment => $environment,
-    require     => Pki::Ca[$rootca],
+  case $ensure {
+    present: {
+      pki::pkitool { "Generate server keypair for ${key_cn} at ${rootca}":
+        command     => "--server ${key_cn}",
+        creates     => "${pki_dir}/${rootca}/keys/${key_cn}.key",
+        base_dir    => "${pki_dir}/${rootca}",
+        environment => $environment,
+        require     => Pki::Ca[$rootca],
+      }
+    }
+    absent: {
+    }
   }
 
 }
