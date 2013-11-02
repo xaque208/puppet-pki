@@ -7,10 +7,13 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
   def create
     debug "create #{resource[:name]}"
     gen_csr()
+    sign_csr()
   end
 
   def destroy
     debug "destroy #{resource[:name]}"
+    revoke()
+    destroy()
   end
 
   def exists?
@@ -40,6 +43,10 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
       "#{@resource[:directory]}/#{@resource[:name]}.csr",
     ]
     openssl(cmd)
+  end
+
+  def sign_csr
+
   end
 
 end
