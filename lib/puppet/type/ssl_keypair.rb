@@ -4,6 +4,8 @@ Puppet::Type.newtype(:ssl_keypair) do
   @doc = "Manage an SSL key pair."
 
   ensurable do
+    defaultto :present
+
     newvalue(:present, :event => :keypair_created) do
       provider.create
     end

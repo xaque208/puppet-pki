@@ -4,7 +4,6 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
 
   def create
     debug "create #{resource[:name]}"
-    puts "fuck"
   end
 
   def destroy
