@@ -30,6 +30,8 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
 
     cmd = [
       'req',
+      '-config',
+      @resource[:directory] + '/openssl.cnf',
       '-batch',
       '-days',
       @resource[:expire],

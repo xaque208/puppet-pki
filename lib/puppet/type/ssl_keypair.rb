@@ -15,6 +15,10 @@ Puppet::Type.newtype(:ssl_keypair) do
     end
   end
 
+  autorequire(:file) do
+    self[:directory] + '/openssl.cnf' if self[:directory]
+  end
+
   newparam(:name) do
     desc "The certificate name"
     isnamevar
