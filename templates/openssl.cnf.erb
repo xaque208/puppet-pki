@@ -2,13 +2,12 @@
 
 # This definition stops the following lines choking if HOME isn't
 # defined.
-HOME         = .
-RANDFILE     = $ENV::HOME/.rnd
+RANDFILE     = <%= @dest %>/.rnd
 openssl_conf = openssl_init
 
 [ openssl_init ]
 # Extra OBJECT IDENTIFIER info:
-#oid_file = $ENV::HOME/.oid
+#oid_file = <%= @dest %>/.oid
 oid_section = new_oids
 engines     = engine_section
 
