@@ -1,5 +1,3 @@
-require 'pp'
-
 Puppet::Type.type(:ssl_keypair).provide(:openssl) do
 
   commands :openssl => 'openssl'
@@ -53,6 +51,8 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
 
       cmd = [
         'ca',
+        '-config',
+        @resource[:directory] + '/openssl.cnf',
         '-batch',
         '-out',
         "#{@resource[:directory]}/#{@resource[:name]}.csr",
