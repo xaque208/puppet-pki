@@ -9,34 +9,18 @@ define pki::ca (
   $city        = "Portland",
   $email       = "admin@example.con",
   $org         = "Acme",
-  #$name        = "Root",
+  $ca_name     = "Root",
   $ou          = "Pki",
   $source_key  = '',
   $source_cert = '',
   $dh          = false,
-  $rootca_path = ''
+  $rootca_path = '',
+  $ca_expire   = '1780',
+  $ca_size     = '2048'
 ) {
 
-  $cn = $name
-  $dest   = "${pki_dir}/${cn}"
-
-  #$environment = [
-  #  "CA_EXPIRE=${ca_expire}",
-  #  "KEY_EXPIRE=${key_expire}",
-  #  "KEY_SIZE=${key_size}",
-  #  "KEY_COUNTRY=${key_country}",
-  #  "KEY_PROVINCE=${key_province}",
-  #  "KEY_CITY=${key_city}",
-  #  "KEY_EMAIL=${key_email}",
-  #  "KEY_ORG=${key_org}",
-  #  "KEY_CN=${key_cn}",
-  #  "KEY_OU=${key_ou}",
-  #  "KEY_NAME=${key_name}",
-  #]
-
-  #Exec {
-  #  environment => $environment,
-  #}
+  $cn   = $name
+  $dest = "${pki_dir}/${cn}"
 
   file {
     $dest:           ensure => directory;
@@ -50,9 +34,15 @@ define pki::ca (
     require => File[$dest],
   }
 
-  # Write the paramaters to the 'vars' script.
+  # clean up old vars script from EasyRSA
   file { "${dest}/vars":
     ensure  => absent,
+  }
+
+  ssl_ca { $name:
+    directory => "${dest}/ca",
+    expire    => $ca_expire,
+    size      => $ca_size,
   }
 
   # Determine if we should build a new CA or copy in an existing.
