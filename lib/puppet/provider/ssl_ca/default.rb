@@ -3,44 +3,60 @@ Puppet::Type.type(:ssl_ca).provide(:openssl) do
   commands :openssl => 'openssl'
 
   def create
-    debug "creating #{resource[:name]}"
+    debug "Creating new CA #{resource[:name]}"
     gen_ca()
-
+    #sign_ca_cert()
   end
 
   def destroy
-    false
+    #not implemented
+    nil
   end
 
   def exists?
-    prefix = @resource[:directory] + '/ca'
-    certpath = prefix + '/ca.crt'
-    keypath = prefix + '/ca.key'
-    File.exists?(certpath) and File.exists?(keypath)
+    debug "Searching for existing CA"
+    File.exists?(certpath()) and File.exists?(keypath())
   end
 
   private
 
   def gen_ca
-    debug "Generating CA"
 
     cmd = [
       'req',
       '-config',
-      @resource[:directory] + '/openssl.cnf',
+      confpath(),
       '-batch',
       '-days',
       @resource[:expire],
       '-nodes',
-      '-new',
+      #'-new',
       '-newkey',
       "rsa:#{@resource[:size]}",
       '-keyout',
-      @resource[:directory] + '/ca.key',
+      keypath(),
+      '-x509',
       '-out',
-      @resource[:directory] + '/ca.csr',
+      certpath()
     ]
+
     openssl(cmd)
+  end
+
+  def certpath
+    @resource[:pki_dir] + '/' + @resource[:name] + '/certs/ca.crt'
+  end
+
+  def keypath
+    @resource[:pki_dir] + '/' + @resource[:name] + '/private/ca.key'
+  end
+
+  def confpath
+    @resource[:pki_dir] + '/' + @resource[:name] + '/openssl.cnf'
+  end
+
+  def reqpath
+    @resource[:pki_dir] + '/' + @resource[:name] + '/reqs/ca.csr'
   end
 
 end
