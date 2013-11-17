@@ -2,55 +2,51 @@
 define pki::ca (
   $pki_dir,
   $ca_expire   = '3650',
+  $ca_size     = '4096',
   $expire      = '365',
   $size        = '1024',
   $country     = 'US',
   $province    = 'OR',
   $city        = "Portland",
   $email       = "admin@example.con",
-  $org         = "Acme",
-  #$name        = "Root",
+  $org         = "Security",
+  $ca_name     = "Root",
   $ou          = "Pki",
-  $source_key  = '',
-  $source_cert = '',
-  $dh          = false,
-  $rootca_path = ''
+  #$source_key  = '',
+  #$source_cert = '',
+  #$dh          = false,
+  $rootca_path = '',
 ) {
 
-  $cn = $name
-  $dest   = "${pki_dir}/${cn}"
+  $cn   = $name
+  $dest = "${pki_dir}/${cn}"
 
-  #$environment = [
-  #  "CA_EXPIRE=${ca_expire}",
-  #  "KEY_EXPIRE=${key_expire}",
-  #  "KEY_SIZE=${key_size}",
-  #  "KEY_COUNTRY=${key_country}",
-  #  "KEY_PROVINCE=${key_province}",
-  #  "KEY_CITY=${key_city}",
-  #  "KEY_EMAIL=${key_email}",
-  #  "KEY_ORG=${key_org}",
-  #  "KEY_CN=${key_cn}",
-  #  "KEY_OU=${key_ou}",
-  #  "KEY_NAME=${key_name}",
-  #]
-
-  #Exec {
-  #  environment => $environment,
-  #}
+  file { $dest:
+    ensure => directory,
+    mode   => '0700',
+  }->
 
   file {
-    $dest:           ensure => directory;
-    "${dest}/ca":    ensure => directory;
-    "${dest}/keys":  ensure => directory;
-    "${dest}/certs": ensure => directory;
-  }
+    "${dest}/private": ensure => directory;
+    "${dest}/certs":   ensure => directory;
+    "${dest}/reqs":    ensure => directory;
+  }->
 
   file { "${dest}/openssl.cnf":
     content => template('pki/openssl.cnf.erb'),
     require => File[$dest],
+  }->
+
+  ssl_ca { $name:
+    pki_dir   => $pki_dir,
+    expire    => $ca_expire,
+    size      => $ca_size,
+    require => File[$dest],
   }
 
-  # Write the paramaters to the 'vars' script.
+  # We need to set some permissions after creating the CA
+
+  # clean up old vars script from EasyRSA
   file { "${dest}/vars":
     ensure  => absent,
   }
