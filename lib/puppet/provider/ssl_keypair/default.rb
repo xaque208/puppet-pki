@@ -15,80 +15,82 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
   end
 
   def exists?
-    prefix = @resource[:directory] + '/' + @resource[:name]
-    certpath = prefix + '.crt'
-    keypath = prefix + '.key'
-    File.exists?(certpath) and File.exists?(keypath)
+    File.exists?(certpath()) and File.exists?(keypath())
   end
-
-  private
 
   def gen_csr
     debug "Generating CSR"
+    debug @resource.inspect
+
+    ca_resource()
+    debug @ca.inspect
 
     cmd = [
       'req',
       '-config',
-      @resource[:directory] + '/openssl.cnf',
+      confpath(),
       '-batch',
       '-days',
       @resource[:expire],
       '-nodes',
       '-new',
       '-newkey',
-      "rsa:#{@resource[:size]}",
+      "rsa:" + @resource[:size],
       '-keyout',
-      "#{@resource[:directory]}/#{@resource[:name]}.key",
+      keypath(),
       '-out',
-      "#{@resource[:directory]}/#{@resource[:name]}.csr",
+      reqpath(),
     ]
     openssl(cmd)
   end
 
   def sign_csr
-    if ca_exists?
-      debug "Signing CSR"
+    debug "Signing certificate"
+    ca_resource()
 
-      cmd = [
-        'ca',
-        '-config',
-        @resource[:directory] + '/openssl.cnf',
-        '-batch',
-        '-out',
-        "#{@resource[:directory]}/#{@resource[:name]}.csr",
-        '-in',
-        "#{@resource[:directory]}/#{@resource[:name]}.csr",
-        '-keyfile',
-        cakeypath(),
-        '-cert',
-        cacertpath(),
-        '-outdir',
-        @resource[:directory] + '/certs',
-      ]
-      openssl(cmd)
-    else
-      fail("ca.{crt,key} were not found at the path #{@resouce[:ca_dir]}")
-    end
+    cmd = [
+      'ca',
+      '-config',
+      confpath(),
+      '-batch',
+      '-out',
+      certpath(),
+      '-in',
+      reqpath(),
+      '-keyfile',
+      @ca.cakeypath(),
+      '-cert',
+      @ca.cacertpath(),
+      '-outdir',
+      @resource[:pki_dir] + '/certs',
+    ]
+    openssl(cmd)
   end
 
-  def ca_exists?
-    File.exists?(cacertpath()) and File.exists?(cakeypath())
-  end
-
-  def cacertpath
-    @resource[:ca_dir] + '/ca.crt'
-  end
-
-  def cakeypath
-    @resource[:ca_dir] + '/ca.key'
+  def confpath
+    @resource[:pki_dir] + '/' + @ca[:name] + '/openssl.cnf'
   end
 
   def certpath
-
+    @resource[:pki_dir] + '/certs' + @resource[:name] + '.crt'
   end
 
   def keypath
+    @resource[:pki_dir] + '/private' + @resource[:name] + '.key'
+  end
 
+  def reqpath
+    @resource[:pki_dir] + '/reqs' + @resource[:name] + '.csr'
+  end
+
+  def ca_resource
+    if @ca
+      debug "Found CA"
+      return @ca
+    else
+      debug "CA not found"
+      @ca = resource.get_ca(resource[:ca])
+    end
   end
 
 end
