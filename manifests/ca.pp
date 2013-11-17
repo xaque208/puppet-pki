@@ -2,47 +2,53 @@
 define pki::ca (
   $pki_dir,
   $ca_expire   = '3650',
+  $ca_size     = '4096',
   $expire      = '365',
   $size        = '1024',
   $country     = 'US',
   $province    = 'OR',
   $city        = "Portland",
   $email       = "admin@example.con",
-  $org         = "Acme",
+  $org         = "Security",
   $ca_name     = "Root",
   $ou          = "Pki",
-  $source_key  = '',
-  $source_cert = '',
-  $dh          = false,
+  #$source_key  = '',
+  #$source_cert = '',
+  #$dh          = false,
   $rootca_path = '',
-  $ca_expire   = '1780',
-  $ca_size     = '2048'
 ) {
 
   $cn   = $name
   $dest = "${pki_dir}/${cn}"
 
+  file { $dest:
+    ensure => directory,
+    mode   => '0700',
+  }->
+
   file {
-    $dest:           ensure => directory;
-    "${dest}/ca":    ensure => directory;
-    "${dest}/keys":  ensure => directory;
-    "${dest}/certs": ensure => directory;
-  }
+    "${dest}/private": ensure => directory;
+    "${dest}/certs":   ensure => directory;
+    "${dest}/reqs":    ensure => directory;
+  }->
 
   file { "${dest}/openssl.cnf":
     content => template('pki/openssl.cnf.erb'),
     require => File[$dest],
+  }->
+
+  ssl_ca { $name:
+    pki_dir   => $pki_dir,
+    expire    => $ca_expire,
+    size      => $ca_size,
+    require => File[$dest],
   }
+
+  # We need to set some permissions after creating the CA
 
   # clean up old vars script from EasyRSA
   file { "${dest}/vars":
     ensure  => absent,
-  }
-
-  ssl_ca { $name:
-    directory => "${dest}/ca",
-    expire    => $ca_expire,
-    size      => $ca_size,
   }
 
   # Determine if we should build a new CA or copy in an existing.
