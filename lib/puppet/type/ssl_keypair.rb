@@ -1,4 +1,5 @@
 require 'pathname'
+require 'pp'
 
 Puppet::Type.newtype(:ssl_keypair) do
   @doc = "Manage an SSL key pair."
@@ -15,30 +16,23 @@ Puppet::Type.newtype(:ssl_keypair) do
     end
   end
 
-  autorequire(:file) do
-    self[:directory] + '/openssl.cnf' if self[:directory]
-  end
-
   newparam(:name) do
     desc "The certificate name"
     isnamevar
     isrequired
   end
 
-  newparam(:directory) do
-    desc "The certificate name"
+  newparam(:pki_dir) do
+    desc "The root directory of the PKI."
     defaultto '/opt/pki'
     validate do |v|
       fail('directory should be absolute') unless Pathname.new(v).absolute?
     end
   end
 
-  newparam(:ca_dir) do
-    desc "The directory containing the ca.{key,crt} files"
-    defaultto '/opt/pki'
-    validate do |v|
-      fail('directory should be absolute') unless Pathname.new(v).absolute?
-    end
+  newparam(:ca) do
+    desc "The puppet resource for the CA"
+    isrequired
   end
 
   newparam(:expire) do
@@ -89,5 +83,12 @@ Puppet::Type.newtype(:ssl_keypair) do
       fail('ou should be a string') unless v.is_a? String
     end
   end
+
+  def get_ca(ca=self[:ca])
+    self.catalog.resources.find {|r|
+      r.is_a?(Puppet::Type.type(:ssl_ca)) && r.name == ca.to_hash[:name]
+    }
+  end
+
 
 end

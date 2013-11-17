@@ -1,8 +1,6 @@
-# For use with easy-rsa version 2.0 and OpenSSL 1.0.0*
+# OpenSSL Config
+#
 
-# This definition stops the following lines choking if HOME isn't
-# defined.
-RANDFILE     = <%= @dest %>/.rnd
 openssl_conf = openssl_init
 
 [ openssl_init ]
@@ -39,11 +37,11 @@ crl_dir       = $dir            # Where the issued crl are kept
 database      = $dir/index.txt  # database index file.
 new_certs_dir = $dir            # default place for new certs.
 
-certificate = $dir/ca/ca.crt   # The CA certificate
-serial      = $dir/ca/serial   # The current serial number
-crl         = $dir/ca/crl.pem  # The current CRL
-private_key = $dir/ca/ca.key   # The private key
-RANDFILE    = $dir/ca/.rand    # private random number file
+certificate = $dir/certs/ca.crt   # The CA certificate
+serial      = $dir/serial           # The current serial number
+crl         = $dir/crl.pem          # The current CRL
+private_key = $dir/private/ca.key   # The private key
+RANDFILE    = $dir/private/.rand    # private random number file
 
 x509_extensions = usr_cert  # The extentions to add to the cert
 
@@ -60,6 +58,9 @@ preserve         = no     # keep passed DN ordering
 # For type CA, the listed attributes must be the same, and the optional
 # and supplied fields are just that :-)
 policy = policy_anything
+
+# Something to be aware of
+unique_subject = no
 
 # For the CA policy
 [ policy_match ]
@@ -276,9 +277,3 @@ authorityKeyIdentifier=keyid:always,issuer:always
 #
 #pkcs11 = pkcs11_section
 
-#[ pkcs11_section ]
-#engine_id = pkcs11
-#dynamic_path = /usr/lib/engines/engine_pkcs11.so
-#MODULE_PATH = $ENV::PKCS11_MODULE_PATH
-#PIN = $ENV::PKCS11_PIN
-#init = 0

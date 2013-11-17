@@ -37,6 +37,17 @@ define pki::ca (
     require => File[$dest],
   }->
 
+  file { "${dest}/index.txt":
+    ensure  => present,
+    require => File[$dest],
+  }->
+
+  file { "${dest}/serial":
+    content => '000a',
+    replace => false,
+    require => File[$dest],
+  }->
+
   ssl_ca { $name:
     pki_dir   => $pki_dir,
     expire    => $ca_expire,
@@ -45,6 +56,7 @@ define pki::ca (
   }
 
   # We need to set some permissions after creating the CA
+
 
   # clean up old vars script from EasyRSA
   file { "${dest}/vars":
