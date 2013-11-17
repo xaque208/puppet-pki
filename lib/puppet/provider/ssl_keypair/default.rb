@@ -58,29 +58,29 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
       '-in',
       reqpath(),
       '-keyfile',
-      @ca.cakeypath(),
+      cakeypath(),
       '-cert',
-      @ca.cacertpath(),
+      cacertpath(),
       '-outdir',
-      @resource[:pki_dir] + '/certs',
+      @resource[:pki_dir] + '/' + ca_name() + '/certs',
     ]
     openssl(cmd)
   end
 
   def confpath
-    @resource[:pki_dir] + '/' + @ca[:name] + '/openssl.cnf'
+    @resource[:pki_dir] + '/' + ca_name() + '/openssl.cnf'
   end
 
   def certpath
-    @resource[:pki_dir] + '/certs' + @resource[:name] + '.crt'
+    @resource[:pki_dir] + '/' + ca_name() + '/certs/' + @resource[:name] + '.crt'
   end
 
   def keypath
-    @resource[:pki_dir] + '/private' + @resource[:name] + '.key'
+    @resource[:pki_dir] + '/' + ca_name() + '/private/' + @resource[:name] + '.key'
   end
 
   def reqpath
-    @resource[:pki_dir] + '/reqs' + @resource[:name] + '.csr'
+    @resource[:pki_dir] + '/' + ca_name() + '/reqs/' + @resource[:name] + '.csr'
   end
 
   def ca_resource
@@ -89,8 +89,28 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
       return @ca
     else
       debug "CA not found"
-      @ca = resource.get_ca(resource[:ca])
+      @ca = @resource.get_ca(@resource[:ca])
     end
+  end
+
+  def cacertpath
+    ca_resource()
+    ca_pki_dir() + '/' + ca_name() + '/certs/ca.crt'
+  end
+
+  def cakeypath
+    ca_resource()
+    ca_pki_dir() + '/' + ca_name() + '/private/ca.key'
+  end
+
+  def ca_name
+    ca_resource()
+    @ca.to_hash[:name]
+  end
+
+  def ca_pki_dir
+    ca_resource()
+    @ca.to_hash[:pki_dir]
   end
 
 end

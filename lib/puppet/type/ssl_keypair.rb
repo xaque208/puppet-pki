@@ -1,4 +1,5 @@
 require 'pathname'
+require 'pp'
 
 Puppet::Type.newtype(:ssl_keypair) do
   @doc = "Manage an SSL key pair."
@@ -84,19 +85,9 @@ Puppet::Type.newtype(:ssl_keypair) do
   end
 
   def get_ca(ca=self[:ca])
-    debug "FUCK"
     self.catalog.resources.find {|r|
-      begin
-        if r.is_a?(Puppet::Type.type(:ssl_ca)) && r.name == ca
-          debug r.inspect
-          puts r.methods.sort
-        end
-        r.is_a?(Puppet::Type.type(:ssl_ca)) && r.name == ca
-      rescue
-        next
-      end
+      r.is_a?(Puppet::Type.type(:ssl_ca)) && r.name == ca.to_hash[:name]
     }
-    debug "UNFUCK"
   end
 
 
