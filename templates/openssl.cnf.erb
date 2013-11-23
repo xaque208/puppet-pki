@@ -1,6 +1,8 @@
 # OpenSSL Config
 #
 
+HOME         = <%= @dest %>
+RANDFILE     = <%= @dest + '/.rnd' %>
 openssl_conf = openssl_init
 
 [ openssl_init ]
@@ -41,7 +43,7 @@ certificate = $dir/certs/ca.crt   # The CA certificate
 serial      = $dir/serial           # The current serial number
 crl         = $dir/crl.pem          # The current CRL
 private_key = $dir/private/ca.key   # The private key
-RANDFILE    = $dir/private/.rand    # private random number file
+RANDFILE    = $dir/private/.rnd     # private random number file
 
 x509_extensions = usr_cert  # The extentions to add to the cert
 

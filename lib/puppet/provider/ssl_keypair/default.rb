@@ -6,12 +6,14 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
     debug "create #{resource[:name]}"
     gen_csr()
     sign_csr()
+    remove_csr()
   end
 
   def destroy
     debug "destroy #{resource[:name]}"
     revoke()
-    destroy()
+    gen_crl()
+    remove_keypair()
   end
 
   def exists?
@@ -41,7 +43,9 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
       '-out',
       reqpath(),
     ]
-    openssl(cmd)
+    begin
+      openssl(cmd)
+    end
   end
 
   def sign_csr
@@ -67,6 +71,59 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
     openssl(cmd)
   end
 
+  def revoke
+    debug "Revoking certificate"
+    ca_resource()
+
+    cmd = [
+      'ca',
+      '-config',
+      confpath(),
+      '-revoke',
+      certpath(),
+      '-keyfile',
+      cakeypath(),
+      '-cert',
+      cacertpath(),
+    ]
+    openssl(cmd)
+  end
+
+  def remove_csr
+    if File.exists?(reqpath())
+      File.unlink(reqpath())
+    end
+  end
+
+  def remove_keypair
+    if File.exists?(certpath())
+      File.unlink(certpath())
+    end
+
+    if File.exists?(keypath())
+      File.unlink(keypath())
+    end
+  end
+
+  def gen_crl
+    debug "Revoking certificate"
+    ca_resource()
+
+    cmd = [
+      'ca',
+      '-config',
+      confpath(),
+      '-gencrl',
+      '-keyfile',
+      cakeypath(),
+      '-cert',
+      cacertpath(),
+      '-out',
+      crlpath()
+    ]
+    openssl(cmd)
+  end
+
   def confpath
     @resource[:pki_dir] + '/' + ca_name() + '/openssl.cnf'
   end
@@ -83,12 +140,16 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
     @resource[:pki_dir] + '/' + ca_name() + '/reqs/' + @resource[:name] + '.csr'
   end
 
+  def crlpath
+    @resource[:pki_dir] + '/' + ca_name() + '/crl.pem'
+  end
+
   def ca_resource
     if @ca
       debug "Found CA"
       return @ca
     else
-      debug "CA not found"
+      debug "CA not found, fetching"
       @ca = @resource.get_ca(@resource[:ca])
     end
   end
