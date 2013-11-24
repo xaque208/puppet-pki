@@ -46,17 +46,46 @@ define pki::ca (
     content => '000a',
     replace => false,
     require => File[$dest],
-  }->
-
-  ssl_ca { $name:
-    pki_dir   => $pki_dir,
-    expire    => $ca_expire,
-    size      => $ca_size,
-    require => File[$dest],
   }
 
-  # We need to set some permissions after creating the CA
+  # Use the keypair from the parent CA if we have speified one
+  #
+  if ($parent) {
 
+    $source_cert = '/Users/zach/Org/n3kl/pki/n3kl.cx/certs/ca.crt'
+    $source_key = '/Users/zach/Org/n3kl/pki/n3kl.cx/private/ca.key'
+
+    # Copy in an existing CA.
+    file { "${dest}/certs/ca.crt":
+      source  => $source_cert,
+      mode    => 0444,
+      require => $parent,
+    }
+    file { "${dest}/private/ca.key":
+      source  => $source_key,
+      mode    => 0400,
+      require => $parent,
+    }
+  } else {
+
+    # Generate a keypair for the SSL CA if we don't have a parent
+    #
+    ssl_ca { $name:
+      pki_dir   => $pki_dir,
+      expire    => $ca_expire,
+      size      => $ca_size,
+      require => File[$dest],
+    }->
+
+    # Set some permissions
+    file { "${dest}/certs/ca.crt":
+      mode    => 0444,
+    }->
+
+    file { "${dest}/private/ca.key":
+      mode    => 0400,
+    }
+  }
 
   # clean up old vars script from EasyRSA
   file { "${dest}/vars":
