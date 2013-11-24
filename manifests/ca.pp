@@ -4,7 +4,7 @@ define pki::ca (
   $ca_expire   = '3650',
   $ca_size     = '4096',
   $expire      = '365',
-  $size        = '1024',
+  $size        = '2048',
   $country     = 'US',
   $province    = 'OR',
   $city        = "Portland",
@@ -12,15 +12,14 @@ define pki::ca (
   $org         = "Security",
   $ca_name     = "Root",
   $ou          = "Pki",
-  #$source_key  = '',
-  #$source_cert = '',
+  $parent      = undef,
   #$dh          = false,
-  $rootca_path = '',
 ) {
 
   $cn   = $name
   $dest = "${pki_dir}/${cn}"
 
+  # Prepare the CA directory structure
   file { $dest:
     ensure => directory,
     mode   => '0700',
@@ -87,38 +86,20 @@ define pki::ca (
     }
   }
 
-  # clean up old vars script from EasyRSA
-  file { "${dest}/vars":
+  # EasyRSA Deprecation
+  #
+  $easy_rsa_files = [
+    "${dest}/vars",
+    "${dest}/whichopensslcnf",
+    "${dest}/pkitool",
+    "${dest}/clean-all",
+    "${dest}/build-dh",
+    "${dest}/openssl-1.0.0.cnf",
+  ]
+
+  file { $easy_rsa_files:
     ensure  => absent,
   }
-
-  # Determine if we should build a new CA or copy in an existing.
-  #if ( $source_key != '' and $source_cert != '' ) {
-
-  #  # Copy in an existing CA.
-  #  file { "${dest}/keys/ca.crt":
-  #    source  => $source_cert,
-  #    mode    => 0644,
-  #    require => Exec["Clean All at ${dest}"],
-  #  }
-  #  file { "${dest}/keys/ca.key":
-  #    source  => $source_key,
-  #    mode    => 0644,
-  #    require => Exec["Clean All at ${dest}"],
-  #  }
-
-  #} else {
-
-  #  # Generate a new CA.
-  #  pki::pkitool { "CA at ${dest}":
-  #    command     => "--initca",
-  #    creates     => "${dest}/keys/ca.crt",
-  #    base_dir    => $dest,
-  #    environment => $environment,
-  #    require     => Exec["Clean All at ${dest}"],
-  #  }
-
-  #}
 
   #if $dh == true {
   #  # Build the Diffie Hellman key.
@@ -130,4 +111,3 @@ define pki::ca (
   #}
 
 }
-
