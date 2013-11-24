@@ -1,6 +1,6 @@
-# Leverages EasyRSA to build out a new CA or Intermediate CA.
 define pki::ca (
-  $pki_dir,
+  $ensure      = 'present',
+  $pki,
   $ca_expire   = '3650',
   $ca_size     = '4096',
   $expire      = '365',
@@ -10,11 +10,13 @@ define pki::ca (
   $city        = "Portland",
   $email       = "admin@example.con",
   $org         = "Security",
-  $ca_name     = "Root",
   $ou          = "Pki",
-  $parent      = undef,
+  $parent      = undef, # a resource like Pki::Ca["Root"]
   #$dh          = false,
 ) {
+
+  $pki_hash = retrieve_resource_hash($pki)
+  $pki_dir  = $pki_hash['directory']
 
   $cn   = $name
   $dest = "${pki_dir}/${cn}"
@@ -51,15 +53,29 @@ define pki::ca (
   #
   if ($parent) {
 
-    $source_cert = '/Users/zach/Org/n3kl/pki/n3kl.cx/certs/ca.crt'
-    $source_key = '/Users/zach/Org/n3kl/pki/n3kl.cx/private/ca.key'
+    $parent_hash = retrieve_resource_hash($parent)
+    $parent_name = retrieve_resource_name($parent)
 
-    # Copy in an existing CA.
+    $source_cert = "${pki_dir}/${parent_name}/certs/${cn}.crt"
+    $source_key  = "${pki_dir}/${parent_name}/private/${cn}.key"
+
+    ssl_keypair { $name:
+      ensure  => $ensure,
+      pki     => $pki,
+      ca      => $parent,
+      is_ca   => true,
+      require => [
+        $parent,
+        File["${dest}/serial"],
+      ],
+    }->
+
+    ## Copy in an existing CA.
     file { "${dest}/certs/ca.crt":
       source  => $source_cert,
       mode    => 0444,
       require => $parent,
-    }
+    }->
     file { "${dest}/private/ca.key":
       source  => $source_key,
       mode    => 0400,
@@ -70,10 +86,11 @@ define pki::ca (
     # Generate a keypair for the SSL CA if we don't have a parent
     #
     ssl_ca { $name:
-      pki_dir   => $pki_dir,
-      expire    => $ca_expire,
-      size      => $ca_size,
-      require => File[$dest],
+      ensure  => $ensure,
+      pki     => $pki,
+      expire  => $ca_expire,
+      size    => $ca_size,
+      require => File["${dest}/serial"],
     }->
 
     # Set some permissions

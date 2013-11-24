@@ -1,9 +1,14 @@
+require 'puppet_x/pki'
+
+include PuppetX::PKI
+
 Puppet::Type.type(:ssl_ca).provide(:openssl) do
 
   commands :openssl => 'openssl'
 
   def create
-    debug "Creating new CA #{resource[:name]}"
+    Puppet.debug "Creating new CA #{resource[:name]}"
+    pki()
     gen_ca()
     #sign_ca_cert()
   end
@@ -14,7 +19,7 @@ Puppet::Type.type(:ssl_ca).provide(:openssl) do
   end
 
   def exists?
-    debug "Searching for existing CA"
+    Puppet.debug "Searching for existing CA"
     File.exists?(certpath()) and File.exists?(keypath())
   end
 
@@ -30,7 +35,6 @@ Puppet::Type.type(:ssl_ca).provide(:openssl) do
       '-days',
       @resource[:expire],
       '-nodes',
-      #'-new',
       '-newkey',
       "rsa:#{@resource[:size]}",
       '-keyout',
@@ -44,20 +48,32 @@ Puppet::Type.type(:ssl_ca).provide(:openssl) do
   end
 
   def certpath
-    @resource[:pki_dir] + '/' + @resource[:name] + '/certs/ca.crt'
+    directory() + '/certs/ca.crt'
   end
 
   def keypath
-    @resource[:pki_dir] + '/' + @resource[:name] + '/private/ca.key'
+    directory() + '/private/ca.key'
   end
 
   def confpath
-    @resource[:pki_dir] + '/' + @resource[:name] + '/openssl.cnf'
+    directory() + '/openssl.cnf'
   end
 
   def reqpath
-    @resource[:pki_dir] + '/' + @resource[:name] + '/reqs/ca.csr'
+    directory() + '/reqs/ca.csr'
   end
 
+  def directory
+    pki()
+    @directory ||= @pki[:directory] + '/' + @resource[:name]
+  end
+
+  def self.pki(resource)
+    @pki ||= PuppetX::PKI.retrieve(:resource_ref => resource[:pki], :catalog => resource.catalog)
+  end
+
+  def pki
+    @pki ||= self.class.pki(resource)
+  end
 end
 

@@ -3,29 +3,35 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
   commands :openssl => 'openssl'
 
   def create
-    debug "create #{resource[:name]}"
+    Puppet.debug "create #{resource[:name]}"
+
+    # initialize the variables
+    ca()
+    pki()
+
     gen_csr()
     sign_csr()
     remove_csr()
   end
 
   def destroy
-    debug "destroy #{resource[:name]}"
+    Puppet.debug "destroy #{resource[:name]}"
     revoke()
     gen_crl()
     remove_keypair()
   end
 
   def exists?
+    ca()
     File.exists?(certpath()) and File.exists?(keypath())
   end
 
   def gen_csr
-    debug "Generating CSR"
-    debug @resource.inspect
+    Puppet.debug "Generating CSR"
+    Puppet.debug @resource.inspect
 
-    ca_resource()
-    debug @ca.inspect
+    ca()
+    Puppet.debug @ca.inspect
 
     cmd = [
       'req',
@@ -45,20 +51,29 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
     ]
 
     # Add the server extensions if requested
-    if @resource[:server]
+    if @resource[:is_server]
       cmd << '-extensions'
       cmd << 'server'
     end
 
+    # Are we building a CA
+    if @resource[:is_ca]
+      if @resource[:is_server]
+        fail("Building a cerver cert that is also a CA seems dumb")
+      end
+      cmd << '-extensions'
+      cmd << 'v3_ca'
+    end
+
     begin
-      debug cmd
+      Puppet.debug cmd
       openssl(cmd)
     end
   end
 
   def sign_csr
-    debug "Signing certificate"
-    ca_resource()
+    Puppet.debug "Signing certificate"
+    ca()
 
     cmd = [
       'ca',
@@ -74,24 +89,33 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
       '-cert',
       cacertpath(),
       '-outdir',
-      @resource[:pki_dir] + '/' + ca_name() + '/certs',
+      directory() + '/certs',
     ]
 
     # Add the server extensions if requested
-    if @resource[:server]
+    if @resource[:is_server]
       cmd << '-extensions'
       cmd << 'server'
     end
 
+    # Are we building a CA
+    if @resource[:is_ca]
+      if @resource[:is_server]
+        fail("Building a cerver cert that is also a CA seems dumb")
+      end
+      cmd << '-extensions'
+      cmd << 'v3_ca'
+    end
+
     begin
-      debug cmd
+      Puppet.debug cmd
       openssl(cmd)
     end
   end
 
   def revoke
-    debug "Revoking certificate"
-    ca_resource()
+    Puppet.debug "Revoking certificate"
+    ca()
 
     cmd = [
       'ca',
@@ -124,8 +148,8 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
   end
 
   def gen_crl
-    debug "Revoking certificate"
-    ca_resource()
+    Puppet.debug "Revoking certificate"
+    ca()
 
     cmd = [
       'ca',
@@ -143,53 +167,56 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
   end
 
   def confpath
-    @resource[:pki_dir] + '/' + ca_name() + '/openssl.cnf'
+    directory() + '/openssl.cnf'
   end
 
   def certpath
-    @resource[:pki_dir] + '/' + ca_name() + '/certs/' + @resource[:name] + '.crt'
+    directory() + '/certs/' + @resource[:name] + '.crt'
   end
 
   def keypath
-    @resource[:pki_dir] + '/' + ca_name() + '/private/' + @resource[:name] + '.key'
+    directory() + '/private/' + @resource[:name] + '.key'
   end
 
   def reqpath
-    @resource[:pki_dir] + '/' + ca_name() + '/reqs/' + @resource[:name] + '.csr'
+    directory() + '/reqs/' + @resource[:name] + '.csr'
   end
 
   def crlpath
-    @resource[:pki_dir] + '/' + ca_name() + '/crl.pem'
-  end
-
-  def ca_resource
-    if @ca
-      debug "Found CA"
-      return @ca
-    else
-      debug "CA not found, fetching"
-      @ca = @resource.get_ca(@resource[:ca])
-    end
+    directory() + '/crl.pem'
   end
 
   def cacertpath
-    ca_resource()
-    ca_pki_dir() + '/' + ca_name() + '/certs/ca.crt'
+    directory() + '/certs/ca.crt'
   end
 
   def cakeypath
-    ca_resource()
-    ca_pki_dir() + '/' + ca_name() + '/private/ca.key'
+    directory() + '/private/ca.key'
   end
 
   def ca_name
-    ca_resource()
-    @ca.to_hash[:name]
+    @ca[:name]
   end
 
-  def ca_pki_dir
-    ca_resource()
-    @ca.to_hash[:pki_dir]
+  def directory
+    pki()
+    Puppet.debug "fetching ca directory"
+    @directory ||= @pki[:directory] + '/' + ca_name()
   end
 
+  def self.ca(resource)
+    @ca ||= PuppetX::PKI.retrieve(:resource_ref => resource[:ca], :catalog => resource.catalog)
+  end
+
+  def ca
+    @ca ||= self.class.ca(resource)
+  end
+
+  def self.pki(resource)
+    @pki ||= PuppetX::PKI.retrieve(:resource_ref => resource[:pki], :catalog => resource.catalog)
+  end
+
+  def pki
+    @pki ||= self.class.pki(resource)
+  end
 end
