@@ -43,7 +43,15 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
       '-out',
       reqpath(),
     ]
+
+    # Add the server extensions if requested
+    if @resource[:server]
+      cmd << '-extensions'
+      cmd << 'server'
+    end
+
     begin
+      debug cmd
       openssl(cmd)
     end
   end
@@ -68,7 +76,17 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
       '-outdir',
       @resource[:pki_dir] + '/' + ca_name() + '/certs',
     ]
-    openssl(cmd)
+
+    # Add the server extensions if requested
+    if @resource[:server]
+      cmd << '-extensions'
+      cmd << 'server'
+    end
+
+    begin
+      debug cmd
+      openssl(cmd)
+    end
   end
 
   def revoke

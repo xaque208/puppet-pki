@@ -84,6 +84,12 @@ Puppet::Type.newtype(:ssl_keypair) do
     end
   end
 
+  newparam(:server) do
+    validate do |v|
+      fail('server should be true or false') unless v == true or v == false
+    end
+  end
+
   def get_ca(ca=self[:ca])
     self.catalog.resources.find {|r|
       r.is_a?(Puppet::Type.type(:ssl_ca)) && r.name == ca.to_hash[:name]
