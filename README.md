@@ -1,94 +1,71 @@
 # PKI Management with Puppet
 
-All of the OpenSSL work is currently done by the tools provided in EasyRSA from
-the OpenVPN 2.2.2 source, with the intention that some will be replaced by
-calling the OpenSSL commands directly.
+Puppet-pki is a module to deploy a full PKI described in Puppet manifests.
 
-This is still very much an experiment, but I would like to be able to manage
-keys associated with each of these CAs and start deploying certificates for
-things like VPNs, MCollective, and Nginx virtual hosts using intermediate CAs.
-Some of the CAs, like the example for Puppet below will not manage keys
-directly, but simply prepare the environment so that you do have a true chain
-of trust.  Obviously this is of little use to you unless you install the RootCA
-certificate yourself.  Luckily, Puppet is very good at this.
+This was once implemented using EasyRSA, but currently being converted into
+nearly-pure Puppet.
+
+Still a work in progress, and therefore an experiment, but I have a plan.
+
+## The Goal
+
+To manage the processes associated with building a CA and its chain, including 
+
+  * Chained Certificate Authorities
+  * Certificate Signing Requests signing for each CA
+  * Certificate Revocations
+  * Revocation list deployment
+  * Certificate Deployment using Puppet
 
 ## Usage
 
 ### Generate the Root CA
 
-    $pki_dir = "/Users/zach/devel/pki"
+First we need to create the directory structure necessary to build a CA.  First
+specify the path.
+
+    $pki_dir = "/usr/local/pki"
+
+Then deploy a root CA under it.
 
     pki::ca { "Root":
-      pki_dir     => $pki_dir,
-      key_email    => "ssl@example.com",
-      key_size     => 2048,
-      key_country  => "US",
-      key_province => "OR",
-      key_city     => "Portland",
-      key_org      => "Acme",
-      dh           => false,
+      pki_dir  => $pki_dir,
+      email    => "ssl@example.com",
+      size     => 2048,
+      country  => "US",
+      province => "OR",
+      city     => "Portland",
+      org      => "SomewhereCool",
     }
 
-#### What this does
+This will build a self signed CA in `$pki_dir/Root` as specified by the name of
+the resource.
 
-This installs EasyRSA to the directory specified as `$pki_dir/$name`.  In this
-case `/Users/zach/devel/pki/Root`.  Once complete, `pkitool` is called to
-generate a new CA, building the environment out of the specified parameters.
+You can now begin to build out your chain of trust.  To start with, perhaps we
+want to generate the CAs that you will use in your laboratory.
 
+### Chaining Authorities Together
 
-### Generate an Intermediate CAs
-
-So far, this builds a certificate/key pair for each `pki::interca` specified and signs them with the RootCA, specified at the location `rootca`.
-
-Set resource defaults for a simpler manifest:
-
-    Pki::Interca {
-      pki_dir      => $pki_dir,
-      rootca       => "Root",
-      key_email    => "ssl@example.com",
-      key_size     => 2048,
-      key_country  => "US",
-      key_province => "OR",
-      key_city     => "Portland",
-      key_org      => "TestCo",
+    pki::ca { "Lab":
+      pki_dir  => $pki_dir,
+      email    => "ssl@example.com",
+      size     => 2048,
+      country  => "US",
+      province => "OR",
+      city     => "Portland",
+      org      => "SomewhereCool",
+      root     => Pki::Ca["Root"],
     }
 
-Provide the resources to generate the intermediate CAs:
+This will do the following
 
-    pki::interca { "VPN":
-      dh => true,
-    }
-    pki::interca { "MCollective":
-    }
-    pki::interca { "Puppet":
-    }
-    pki::interca { "TechOps":
-      key_email    => "techops@example.com",
-      key_name     => "TechOps",
-    }
+* create the directory structure for the new CA
+* create a keypair for the new CA in the parent CA
+* copy the keypair from the parent to the child CA
 
-#### What this does
+## Next Steps
 
-This creates several intermediate CAs in the root CA located at `$pki_dir/Root`
-and then proceeds to create new EasyRSA installations using the generated in
-the root, as the CA keypair as the newly generated intermediate CA keypair.
-
-### Create a Server Keypair
-
-We are not able to start generating server certificates for a given intermediate CA.
-
-    Pki::Serverkey {
-      pki_dir => $pki_dir,
-    }
-
-    pki::serverkey { "tickets.example.com":
-      rootca   => 'TechOps',
-      key_name => 'Example.com Ticket Tracker',
-    }
-
-#### What this does
-
-This creates a server keypair for the CA specified, following the same manner above.
+* Become reliable
 
 ## Contributers
 
