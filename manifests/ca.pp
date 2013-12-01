@@ -60,11 +60,18 @@ define pki::ca (
     $source_key  = "${pki_dir}/${parent_name}/private/${cn}.key"
 
     ssl_keypair { $name:
-      ensure  => $ensure,
-      pki     => $pki,
-      ca      => $parent,
-      is_ca   => true,
-      require => [
+      ensure   => $ensure,
+      pki      => $pki,
+      ca       => $parent,
+      cn       => $cn,
+      country  => $country,
+      province => $province,
+      city     => $city,
+      email    => $email,
+      org      => $org,
+      ou       => $ou,
+      is_ca    => true,
+      require  => [
         $parent,
         File["${dest}/serial"],
       ],

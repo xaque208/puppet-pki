@@ -3,40 +3,41 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
   commands :openssl => 'openssl'
 
   def create
-    Puppet.debug "create #{resource[:name]}"
+    Puppet.debug "Creating keypair for #{resource[:name]}"
 
-    # initialize the variables
-    ca()
-    pki()
+    # Load variable hash
+    vars()
 
+    # Perform
     gen_csr()
     sign_csr()
     remove_csr()
   end
 
   def destroy
-    Puppet.debug "destroy #{resource[:name]}"
+    Puppet.debug "Destroying keypair for #{resource[:name]}"
+
+    # Load variable hash
+    vars()
+
+    # Perform
     revoke()
     gen_crl()
     remove_keypair()
   end
 
   def exists?
-    ca()
-    File.exists?(certpath()) and File.exists?(keypath())
+    vars()
+    File.exists?(@vars[:certpath]) and File.exists?(@vars[:keypath])
   end
 
   def gen_csr
-    Puppet.debug "Generating CSR"
-    Puppet.debug @resource.inspect
-
-    ca()
-    Puppet.debug @ca.inspect
+    Puppet.debug "Generating CSR for #{resource[:name]}"
 
     cmd = [
       'req',
       '-config',
-      confpath(),
+      @vars[:confpath],
       '-batch',
       '-days',
       @resource[:expire],
@@ -45,9 +46,9 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
       '-newkey',
       "rsa:" + @resource[:size],
       '-keyout',
-      keypath(),
+      @vars[:keypath],
       '-out',
-      reqpath(),
+      @vars[:reqpath],
     ]
 
     # Add the server extensions if requested
@@ -65,31 +66,50 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
       cmd << 'v3_ca'
     end
 
+    subj = []
+    subj << 'C=' + @resource[:country] if @resource[:country]
+    subj << 'ST=' + @resource[:province] if @resource[:province]
+    subj << 'L=' + @resource[:city] if @resource[:city]
+    subj << 'O=' + @resource[:org] if @resource[:org]
+    subj << 'OU=' + @resource[:ou] if @resource[:ou]
+
+    if @resource[:cn]
+      common_name = []
+      common_name << 'CN=' + @resource[:cn]
+      common_name << 'name=' + @resource[:name]
+      common_name << 'emailAddress=' + @resource[:email] if @resource[:email]
+
+      subj << common_name.join('/')
+    else
+      subj << 'CN=' + @resource[:name]
+    end
+
+    cmd << '-subj'
+    cmd << '/' + subj.join('/')
+
     begin
-      Puppet.debug cmd
       openssl(cmd)
     end
   end
 
   def sign_csr
-    Puppet.debug "Signing certificate"
-    ca()
+    Puppet.debug "Signing certificate for #{resource[:name]}"
 
     cmd = [
       'ca',
       '-config',
-      confpath(),
+      @vars[:confpath],
       '-batch',
       '-out',
-      certpath(),
+      @vars[:certpath],
       '-in',
-      reqpath(),
+      @vars[:reqpath],
       '-keyfile',
-      cakeypath(),
+      @vars[:cakeypath],
       '-cert',
-      cacertpath(),
+      @vars[:cacertpath],
       '-outdir',
-      directory() + '/certs',
+      @vars[:certsdir],
     ]
 
     # Add the server extensions if requested
@@ -108,62 +128,79 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
     end
 
     begin
-      Puppet.debug cmd
       openssl(cmd)
     end
   end
 
   def revoke
     Puppet.debug "Revoking certificate"
-    ca()
 
     cmd = [
       'ca',
       '-config',
-      confpath(),
+      @vars[:confpath],
       '-revoke',
-      certpath(),
+      @vars[:certpath],
       '-keyfile',
-      cakeypath(),
+      @vars[:cakeypath],
       '-cert',
-      cacertpath(),
+      @vars[:cacertpath],
     ]
+
     openssl(cmd)
   end
 
   def remove_csr
-    if File.exists?(reqpath())
-      File.unlink(reqpath())
+    if File.exists?(@vars[:reqpath])
+      File.unlink(@vars[:reqpath])
     end
   end
 
   def remove_keypair
-    if File.exists?(certpath())
-      File.unlink(certpath())
+    if File.exists?(@vars[:certpath])
+      File.unlink(@vars[:certpath])
     end
 
-    if File.exists?(keypath())
-      File.unlink(keypath())
+    if File.exists?(@vars[:keypath])
+      File.unlink(@vars[:keypath])
     end
   end
 
   def gen_crl
     Puppet.debug "Revoking certificate"
-    ca()
 
     cmd = [
       'ca',
       '-config',
-      confpath(),
+      @vars[:confpath],
       '-gencrl',
       '-keyfile',
-      cakeypath(),
+      @vars[:cakeypath],
       '-cert',
-      cacertpath(),
+      @vars[:cacertpath],
       '-out',
-      crlpath()
+      @vars[:crlpath]
     ]
+
     openssl(cmd)
+  end
+
+  def vars
+    @vars = {
+      :directory  => directory(),
+      :confpath   => confpath(),
+      :certpath   => certpath(),
+      :keypath    => keypath(),
+      :reqpath    => reqpath(),
+      :crlpath    => crlpath(),
+      :cacertpath => cacertpath(),
+      :cakeypath  => cakeypath(),
+      :ca_name    => ca_name(),
+    }
+
+    @vars[:certsdir] = @vars[:directory] + '/certs'
+
+    @vars
   end
 
   def confpath
@@ -195,28 +232,30 @@ Puppet::Type.type(:ssl_keypair).provide(:openssl) do
   end
 
   def ca_name
+    ca()
     @ca[:name]
   end
 
   def directory
     pki()
-    Puppet.debug "fetching ca directory"
-    @directory ||= @pki[:directory] + '/' + ca_name()
+    @pki[:directory] + '/' + ca_name()
   end
 
+  # Get info from the CA resource
   def self.ca(resource)
-    @ca ||= PuppetX::PKI.retrieve(:resource_ref => resource[:ca], :catalog => resource.catalog)
+    @ca = PuppetX::PKI.retrieve(:resource_ref => resource[:ca], :catalog => resource.catalog)
   end
 
   def ca
-    @ca ||= self.class.ca(resource)
+    @ca = self.class.ca(resource)
   end
 
+  # Get info from the PKI resource
   def self.pki(resource)
-    @pki ||= PuppetX::PKI.retrieve(:resource_ref => resource[:pki], :catalog => resource.catalog)
+    @pki = PuppetX::PKI.retrieve(:resource_ref => resource[:pki], :catalog => resource.catalog)
   end
 
   def pki
-    @pki ||= self.class.pki(resource)
+    @pki = self.class.pki(resource)
   end
 end

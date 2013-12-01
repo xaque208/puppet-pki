@@ -22,6 +22,29 @@ Puppet::Type.newtype(:ssl_keypair) do
     isrequired
   end
 
+  # Used when setting the Subject
+  newparam(:cn) do
+    desc "The common name for the certificate.  i.e. www.example.com"
+  end
+
+  newparam(:country) do
+  end
+
+  newparam(:province) do
+  end
+
+  newparam(:city) do
+  end
+
+  newparam(:org) do
+  end
+
+  newparam(:ou) do
+  end
+
+  newparam(:email) do
+  end
+
   newparam(:expire) do
     desc "How many days the key should be valid for."
     defaultto '365'
@@ -58,7 +81,7 @@ Puppet::Type.newtype(:ssl_keypair) do
     desc "The PKI to use."
   end
 
-  autorequire(:ssl_ca) do
+  autorequire(:"pki::ca") do
     self[:ca]
   end
 
