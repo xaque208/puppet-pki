@@ -22,19 +22,6 @@ Puppet::Type.newtype(:ssl_keypair) do
     isrequired
   end
 
-  newparam(:pki_dir) do
-    desc "The root directory of the PKI."
-    defaultto '/opt/pki'
-    validate do |v|
-      fail('directory should be absolute') unless Pathname.new(v).absolute?
-    end
-  end
-
-  newparam(:ca) do
-    desc "The puppet resource for the CA"
-    isrequired
-  end
-
   newparam(:expire) do
     desc "How many days the key should be valid for."
     defaultto '365'
@@ -45,56 +32,37 @@ Puppet::Type.newtype(:ssl_keypair) do
     defaultto '2048'
   end
 
-  newparam(:country) do
-    defaultto 'US'
-    validate do |v|
-      fail('country should be a string') unless v.is_a? String
-    end
-  end
-
-  newparam(:province) do
-    defaultto 'OR'
-    validate do |v|
-      fail('province should be a string') unless v.is_a? String
-    end
-  end
-
-  newparam(:city) do
-    defaultto 'Portland'
-    validate do |v|
-      fail('city should be a string') unless v.is_a? String
-    end
-  end
-
-  newparam(:email) do
-    validate do |v|
-      fail('email should be a string') unless v.is_a? String
-    end
-  end
-
-  newparam(:org) do
-    validate do |v|
-      fail('org should be a string') unless v.is_a? String
-    end
-  end
-
-  newparam(:ou) do
-    validate do |v|
-      fail('ou should be a string') unless v.is_a? String
-    end
-  end
-
-  newparam(:server) do
+  # Used when building a server keypair
+  newparam(:is_server) do
+    desc "Turn on the server extensions for this certificate"
+    defaultto false
     validate do |v|
       fail('server should be true or false') unless v == true or v == false
     end
   end
 
-  def get_ca(ca=self[:ca])
-    self.catalog.resources.find {|r|
-      r.is_a?(Puppet::Type.type(:ssl_ca)) && r.name == ca.to_hash[:name]
-    }
+  # Used when we are building a child CA
+  newparam(:is_ca) do
+    desc "Turn on the CA extensions for this certificate"
+    defaultto false
+    validate do |v|
+      fail('we are either a ca or we are not') unless v == true or v == false
+    end
   end
 
+  newparam(:ca, :isrequired => true) do
+    desc "The resource name of the CA"
+  end
 
+  newparam(:pki, :isrequired => true) do
+    desc "The PKI to use."
+  end
+
+  autorequire(:ssl_ca) do
+    self[:ca]
+  end
+
+  autorequire(:pki) do
+    self[:pki]
+  end
 end

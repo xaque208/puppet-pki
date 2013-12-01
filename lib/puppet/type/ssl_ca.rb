@@ -1,5 +1,3 @@
-require 'pathname'
-
 Puppet::Type.newtype(:ssl_ca) do
   @doc = "Manage an SSL CA."
 
@@ -15,23 +13,10 @@ Puppet::Type.newtype(:ssl_ca) do
     end
   end
 
-  # WRONG!!
-  #autorequire(:file) do
-  #  self[:directory] + '/openssl.cnf'
-  #end
-
   newparam(:name) do
-    desc "The name of the CA, as well as the directory in the pki_dir.  See below."
+    desc "The name of the CA.  Used as the directory name under the PKI directory."
     isnamevar
     isrequired
-  end
-
-  newparam(:pki_dir) do
-    desc "The root directory of the PKI."
-    defaultto '/opt/pki'
-    validate do |v|
-      fail('directory should be absolute') unless Pathname.new(v).absolute?
-    end
   end
 
   newparam(:expire) do
@@ -44,4 +29,11 @@ Puppet::Type.newtype(:ssl_ca) do
     defaultto '2048'
   end
 
+  newparam(:pki, :isrequired => true) do
+    desc "The PKI to use."
+  end
+
+  autorequire(:pki) do
+    self[:pki]
+  end
 end
