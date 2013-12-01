@@ -21,40 +21,42 @@ To manage the processes associated with building a CA and its chain, including
 
 ### Generate the Root CA
 
-First we need to create the directory structure necessary to build a CA.  First
-specify the path.
+First we need to create the directory structure necessary to build a CA.  Create a `pki` resource that the rest of the resources can reference.
 
     $pki_dir = "/usr/local/pki"
 
-Then deploy a root CA under it.
+    pki { "example.com":
+      directory => $pki_dir,
+    }
+
+Then deploy a root CA under it, using the `pki` resource from above.
 
     pki::ca { "Root":
-      pki_dir  => $pki_dir,
       email    => "ssl@example.com",
       size     => 2048,
       country  => "US",
       province => "OR",
       city     => "Portland",
       org      => "SomewhereCool",
+      pki      => Pki["example.com"],
     }
 
 This will build a self signed CA in `$pki_dir/Root` as specified by the name of
 the resource.
 
-You can now begin to build out your chain of trust.  To start with, perhaps we
-want to generate the CAs that you will use in your laboratory.
+You can now begin to build out your chain of trust.  To start with, create an Intermediate CA, referencing the Root CA above using the `parent` parameter and the `pki` parameter as before.
 
 ### Chaining Authorities Together
 
     pki::ca { "Lab":
-      pki_dir  => $pki_dir,
       email    => "ssl@example.com",
       size     => 2048,
       country  => "US",
       province => "OR",
       city     => "Portland",
       org      => "SomewhereCool",
-      root     => Pki::Ca["Root"],
+      parent   => Pki::Ca["Root"],
+      pki      => Pki["example.com"],
     }
 
 This will do the following
