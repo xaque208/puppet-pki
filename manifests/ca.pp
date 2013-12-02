@@ -1,98 +1,137 @@
-# Leverages EasyRSA to build out a new CA or Intermediate CA.
 define pki::ca (
-    $ca_expire    = '3650',
-    $key_expire   = '365',
-    $key_size     = '1024',
-    $key_country  = 'US',
-    $key_province = 'OR',
-    $key_city     = "Portland",
-    $key_email    = "admin@example.con",
-    $key_org      = "Acme",
-    $key_name     = "Root",
-    $key_ou       = "Pki",
-    $pki_dir,
-    $source_key   = '',
-    $source_cert  = '',
-    $dh           = false,
-    $rootca_path  = ''
+  $ensure      = 'present',
+  $pki,
+  $ca_expire   = '3650',
+  $ca_size     = '4096',
+  $expire      = '365',
+  $size        = '2048',
+  $country     = 'US',
+  $province    = 'OR',
+  $city        = "Portland",
+  $email       = "admin@example.con",
+  $org         = "Security",
+  $ou          = "Pki",
+  $parent      = undef, # a resource like Pki::Ca["Root"]
+  #$dh          = false,
 ) {
 
-  $key_cn = $name
-  $dest   = "${pki_dir}/${key_cn}"
+  $pki_hash = retrieve_resource_hash($pki)
+  $pki_dir  = $pki_hash['directory']
 
-  $environment = [
-    "CA_EXPIRE=${ca_expire}",
-    "KEY_EXPIRE=${key_expire}",
-    "KEY_SIZE=${key_size}",
-    "KEY_COUNTRY=${key_country}",
-    "KEY_PROVINCE=${key_province}",
-    "KEY_CITY=${key_city}",
-    "KEY_EMAIL=${key_email}",
-    "KEY_ORG=${key_org}",
-    "KEY_CN=${key_cn}",
-    "KEY_OU=${key_ou}",
-    "KEY_NAME=${key_name}",
-  ]
+  $cn   = $name
+  $dest = "${pki_dir}/${cn}"
 
-  Exec {
-    environment => $environment,
+  # Prepare the CA directory structure
+  file { $dest:
+    ensure => directory,
+    mode   => '0700',
+  }->
+
+  file {
+    "${dest}/private": ensure => directory;
+    "${dest}/certs":   ensure => directory;
+    "${dest}/reqs":    ensure => directory;
+  }->
+
+  file { "${dest}/openssl.cnf":
+    content => template('pki/openssl.cnf.erb'),
+    require => File[$dest],
+  }->
+
+  file { "${dest}/index.txt":
+    ensure  => present,
+    require => File[$dest],
+  }->
+
+  file { "${dest}/serial":
+    content => '000a',
+    replace => false,
+    require => File[$dest],
   }
 
-  pki { $title:
-    dest => $dest,
-  }
+  # Use the keypair from the parent CA if we have speified one
+  #
+  if ($parent) {
 
-  # Write the paramaters to the 'vars' script.
-  file { "${dest}/vars":
-    mode    => 700,
-    content => template("pki/vars.erb"),
-    require => Pki[$title],
-  }
+    $parent_hash = retrieve_resource_hash($parent)
+    $parent_name = retrieve_resource_name($parent)
 
-  # Clean everything and start over, unless the serial file is in place.
-  exec { "Clean All at ${dest}":
-    cwd     => $dest,
-    command => "/bin/bash -c \"(source $dest/vars > /dev/null; ${dest}/clean-all)\"",
-    creates => "${dest}/keys/serial",
-    require => File["${dest}/vars"],
-  }
+    $source_cert = "${pki_dir}/${parent_name}/certs/${cn}.crt"
+    $source_key  = "${pki_dir}/${parent_name}/private/${cn}.key"
 
-  # Determine if we should build a new CA or copy in an existing.
-  if ( $source_key != '' and $source_cert != '' ) {
+    ssl_keypair { $name:
+      ensure   => $ensure,
+      pki      => $pki,
+      ca       => $parent,
+      cn       => $cn,
+      country  => $country,
+      province => $province,
+      city     => $city,
+      email    => $email,
+      org      => $org,
+      ou       => $ou,
+      is_ca    => true,
+      require  => [
+        $parent,
+        File["${dest}/serial"],
+      ],
+    }->
 
-    # Copy in an existing CA.
-    file { "${dest}/keys/ca.crt":
+    ## Copy in an existing CA.
+    file { "${dest}/certs/ca.crt":
       source  => $source_cert,
-      mode    => 0644,
-      require => Exec["Clean All at ${dest}"],
-    }
-    file { "${dest}/keys/ca.key":
+      mode    => 0444,
+      require => $parent,
+    }->
+    file { "${dest}/private/ca.key":
       source  => $source_key,
-      mode    => 0644,
-      require => Exec["Clean All at ${dest}"],
+      mode    => 0400,
+      require => $parent,
     }
-
   } else {
 
-    # Generate a new CA.
-    pki::pkitool { "CA at ${dest}":
-      command     => "--initca",
-      creates     => "${dest}/keys/ca.crt",
-      base_dir    => $dest,
-      environment => $environment,
-      require     => Exec["Clean All at ${dest}"],
-    }
+    # Generate a keypair for the SSL CA if we don't have a parent
+    #
+    ssl_ca { $name:
+      ensure  => $ensure,
+      pki     => $pki,
+      expire  => $ca_expire,
+      size    => $ca_size,
+      require => File["${dest}/serial"],
+    }->
 
+    # Set some permissions
+    file { "${dest}/certs/ca.crt":
+      mode    => 0444,
+    }->
+
+    file { "${dest}/private/ca.key":
+      mode    => 0400,
+    }
   }
 
-  if $dh == true {
-    # Build the Diffie Hellman key.
-    exec { "Build DH at ${dest}":
-      cwd     => $dest,
-      command => "/bin/bash -c \"(source $dest/vars > /dev/null; ${dest}/build-dh ${key_size})\"",
-      creates => "${dest}/keys/dh${key_size}.pem",
-    }
+  # EasyRSA Deprecation
+  #
+  $easy_rsa_files = [
+    "${dest}/vars",
+    "${dest}/whichopensslcnf",
+    "${dest}/pkitool",
+    "${dest}/clean-all",
+    "${dest}/build-dh",
+    "${dest}/openssl-1.0.0.cnf",
+  ]
+
+  file { $easy_rsa_files:
+    ensure  => absent,
   }
+
+  #if $dh == true {
+  #  # Build the Diffie Hellman key.
+  #  exec { "Build DH at ${dest}":
+  #    cwd     => $dest,
+  #    command => "/bin/bash -c \"(source $dest/vars > /dev/null; ${dest}/build-dh ${key_size})\"",
+  #    creates => "${dest}/keys/dh${key_size}.pem",
+  #  }
+  #}
 
 }
-
