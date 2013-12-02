@@ -2,25 +2,30 @@
 
 $pki_dir = "/Users/zach/devel/pki"
 
+pki { "dev":
+  directory => $pki_dir,
+}
+
+Pki::Ca {
+  pki => Pki["dev"],
+}
+
+Ssl_keypair {
+  pki => Pki["dev"],
+}
+
 pki::ca { "Test":
-  pki_dir => $pki_dir,
   email   => "ops@example.com",
 }
 
-ssl_keypair { "testcert.example.com":
-  pki_dir => $pki_dir,
-  ca      => Ssl_ca['Test'],
-  require => Pki::Ca['Test'],
+ssl_keypair { "testcert0.example.com":
+  ca      => Pki::Ca['Test'],
 }
 
 ssl_keypair { "testcert1.example.com":
-  pki_dir => $pki_dir,
-  ca      => Ssl_ca['Test'],
-  require => Pki::Ca['Test'],
+  ca      => Pki::Ca['Test'],
 }
 
 ssl_keypair { "testcert2.example.com":
-  pki_dir => $pki_dir,
-  ca      => Ssl_ca['Test'],
-  require => Pki::Ca['Test'],
+  ca      => Pki::Ca['Test'],
 }
